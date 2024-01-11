@@ -4,7 +4,7 @@
 Name:         ipmitool
 Summary:      Utility for IPMI control
 Version:      1.8.18
-Release:      25%{?dist}
+Release:      27%{?dist}
 License:      BSD
 URL:          http://ipmitool.sourceforge.net/
 Source0:      https://github.com/%{name}/%{name}/archive/%{gitname}_%{gitversion}/%{name}-%{version}.tar.gz
@@ -31,6 +31,11 @@ Patch12:      0012-CVE-2020-5208.patch
 Patch13:      0013-quanta-oem-support.patch
 Patch14:      0014-lanplus-cipher-retry.patch
 Patch15:      0015-lanplus-Cleanup.-Refix-6dec83ff-fix-be2c0c4b.patch
+Patch20:      0020-plugins-open-Fix-for-interrupted-select.patch
+Patch21:      0021-open-checking-received-msg-id-against-expectation.patch
+Patch22:      0022-nvidia-iana.patch
+Patch23:      0023-move-static-objects-to-source-file.patch
+Patch24:      0024-sdr-Fix-segfault-on-invalid-unit-types.patch
 
 BuildRequires: openssl-devel readline-devel ncurses-devel
 %{?systemd_requires}
@@ -189,6 +194,18 @@ install -Dm 755 contrib/bmc-snmp-proxy         %{buildroot}%{_libexecdir}/bmc-sn
 %{_libexecdir}/bmc-snmp-proxy
 
 %changelog
+* Thu Jul 27 2023 Pavel Cahyna <pcahyna@redhat.com> - 1.8.18-27
+- Backport upstream PR 120 to fix segfault on invalid unit types
+  Resolves: rhbz#2224578
+- Add vendor ID for NVIDIA BMCs
+  Resolves: rhbz#2218358
+- Update /var/run to /run in ipmievd.service that systemd warns about
+  Resolves: rhbz#2100475
+- Add upstream ipmievd patch to check received msg id against expectation
+  Fixes problem where SEL response is not recognized correctly
+  when SEL request times out
+  Resolves: rhbz#2224569
+
 * Mon Feb  7 2022 Pavel Cahyna <pcahyna@redhat.com> - 1.8.18-25
 - Apply changes from RHEL 8 (#1811941, #1831158, #1951480)
   Resolves: rhbz#2051621
