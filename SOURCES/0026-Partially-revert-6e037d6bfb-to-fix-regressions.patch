@@ -1,0 +1,149 @@
+From def6e28672049509df48635e2ad5834980d2075e Mon Sep 17 00:00:00 2001
+From: Pavel Cahyna <pcahyna@redhat.com>
+Date: Fri, 5 Dec 2025 11:56:51 +0100
+Subject: [PATCH] Partially revert 6e037d6bfb to fix regressions.
+
+This includes changes in
+https://codeberg.org/IPMITool/ipmitool/commit/202f7427e0a4d1f319fc4b914676cc2f08da6c6c
+https://codeberg.org/IPMITool/ipmitool/commit/b67f400825e55bd82f609f40c9c612b4c9961e3e
+and a fix for https://bugzilla.redhat.com/show_bug.cgi?id=2303185
+and some other fixes for issues found by code inspection only.
+---
+ lib/ipmi_chassis.c                   | 2 +-
+ lib/ipmi_mc.c                        | 2 +-
+ lib/ipmi_picmg.c                     | 4 ++--
+ lib/ipmi_sdr.c                       | 2 +-
+ lib/ipmi_sunoem.c                    | 4 ++--
+ src/ipmievd.c                        | 6 +++---
+ src/plugins/serial/serial_terminal.c | 2 +-
+ 7 files changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/lib/ipmi_chassis.c b/lib/ipmi_chassis.c
+index 7ac6770..97d200a 100644
+--- a/lib/ipmi_chassis.c
++++ b/lib/ipmi_chassis.c
+@@ -1049,7 +1049,7 @@ get_bootparam_options(char *optstring,
+ 			optionError = 1;
+ 			break;
+ 		}
+-		if (!strcmp(token, "no-")) {
++		if (strncmp(token, "no-", 3) == 0) {
+ 			setbit = 1;
+ 			token += 3;
+ 		}
+diff --git a/lib/ipmi_mc.c b/lib/ipmi_mc.c
+index a594347..3a03c2a 100644
+--- a/lib/ipmi_mc.c
++++ b/lib/ipmi_mc.c
+@@ -1318,7 +1318,7 @@ ipmi_mc_main(struct ipmi_intf * intf, int argc, char ** argv)
+ 
+ 		/* Allow for 'rfc' and 'rfc4122' */
+ 		if (argc > 1) {
+-			if (!strcmp(argv[1], "rfc")) {
++			if (!strncmp(argv[1], "rfc", 3)) {
+ 				guid_mode = GUID_RFC4122;
+ 			}
+ 			else if (!strcmp(argv[1], "smbios")) {
+diff --git a/lib/ipmi_picmg.c b/lib/ipmi_picmg.c
+index 8becc78..74e68d7 100644
+--- a/lib/ipmi_picmg.c
++++ b/lib/ipmi_picmg.c
+@@ -2084,7 +2084,7 @@ ipmi_picmg_main (struct ipmi_intf * intf, int argc, char ** argv)
+ 		lprintf(LOG_DEBUG,"PICMG: amcportstate API");
+ 
+ 		if (argc > 1) {
+-			if (!strcmp(argv[1], "get")){
++			if (!strncmp(argv[1], "get", 3)){
+ 				int32_t device;
+ 				uint8_t channel;
+ 
+@@ -2308,7 +2308,7 @@ ipmi_picmg_main (struct ipmi_intf * intf, int argc, char ** argv)
+ 	}/* clk commands*/
+ 	else if (!strcmp(argv[0], "clk")) {
+ 		if (argc > 1) {
+-			if (!strcmp(argv[1], "get")) {
++			if (!strncmp(argv[1], "get", 3)) {
+ 				int8_t clk_res = -1;            
+ 				uint8_t clk_id;
+ 				uint8_t max_res = 15;
+diff --git a/lib/ipmi_sdr.c b/lib/ipmi_sdr.c
+index 42ae9f9..e8b3445 100644
+--- a/lib/ipmi_sdr.c
++++ b/lib/ipmi_sdr.c
+@@ -4581,7 +4581,7 @@ ipmi_sdr_print_type(struct ipmi_intf *intf, char *type)
+ 		return 0;
+ 	}
+ 
+-	if (!strcmp(type, "0x")) {
++	if (strncmp(type, "0x", 2) == 0) {
+ 		/* begins with 0x so let it be entered as raw hex value */
+ 		if (str2uchar(type, &sensor_type) != 0) {
+ 			lprintf(LOG_ERR,
+diff --git a/lib/ipmi_sunoem.c b/lib/ipmi_sunoem.c
+index d03900d..0b34a1b 100644
+--- a/lib/ipmi_sunoem.c
++++ b/lib/ipmi_sunoem.c
+@@ -1194,7 +1194,7 @@ ipmi_sunoem_cli(struct ipmi_intf * intf, int argc, char *argv[])
+ 			} else if (arg_num >= argc) {
+ 				/* Last arg was sent. Set EOF */
+ 				cli_req.command_response = SUNOEM_CLI_CMD_EOF;
+-			} else if (!strcmp(argv[arg_num], "@wait=")) {
++			} else if (strncmp(argv[arg_num], "@wait=", 6) == 0) {
+ 				/* This is a wait command */
+ 				char *s = &argv[arg_num][6];
+ 				delay = 0;
+@@ -1797,7 +1797,7 @@ ipmi_sunoem_getval(struct ipmi_intf * intf, int argc, char *argv[])
+ 	}
+ 
+ 	if ((ipmi_sunoem_checkversion(intf, &supp_ver) < 0)
+-			&& (!strcmp(argv[0], sp_path))) {
++			&& (!strncmp(argv[0], sp_path, strlen(sp_path)))) {
+ 		argv[0][1] = 'X'; /*replace SP by X to gain access to hidden properties*/
+ 		memmove(&argv[0][2], &argv[0][3], strlen(argv[0]) - 2);
+ 	}
+diff --git a/src/ipmievd.c b/src/ipmievd.c
+index 6a94b1f..fb1c310 100644
+--- a/src/ipmievd.c
++++ b/src/ipmievd.c
+@@ -715,7 +715,7 @@ ipmievd_main(struct ipmi_event_intf * eintf, int argc, char ** argv)
+ 		else if (strcasecmp(argv[i], "nodaemon") == 0) {
+ 			daemon = 0;
+ 		}
+-		else if (strcasecmp(argv[i], "daemon=") == 0) {
++		else if (strncasecmp(argv[i], "daemon=", 7) == 0) {
+ 			if (strcasecmp(argv[i]+7, "on") == 0 ||
+ 			    strcasecmp(argv[i]+7, "yes") == 0)
+ 				daemon = 1;
+@@ -723,14 +723,14 @@ ipmievd_main(struct ipmi_event_intf * eintf, int argc, char ** argv)
+ 				 strcasecmp(argv[i]+7, "no") == 0)
+ 				daemon = 0;
+ 		}
+-		else if (strcasecmp(argv[i], "timeout=") == 0) {
++		else if (strncasecmp(argv[i], "timeout=", 8) == 0) {
+ 			if ( (str2int(argv[i]+8, &selwatch_timeout) != 0) || 
+ 					selwatch_timeout < 0) {
+ 				lprintf(LOG_ERR, "Invalid input given or out of range for time-out.");
+ 				return (-1);
+ 			}
+ 		}
+-		else if (strcasecmp(argv[i], "pidfile=") == 0) {
++		else if (strncasecmp(argv[i], "pidfile=", 8) == 0) {
+ 			memset(pidfile, 0, 64);
+ 			strncpy(pidfile, argv[i]+8,
+ 				__min(strlen((const char *)(argv[i]+8)), 63));
+diff --git a/src/plugins/serial/serial_terminal.c b/src/plugins/serial/serial_terminal.c
+index 58bca17..d062e04 100644
+--- a/src/plugins/serial/serial_terminal.c
++++ b/src/plugins/serial/serial_terminal.c
+@@ -394,7 +394,7 @@ recv_response(struct ipmi_intf * intf, unsigned char *data, int len)
+ 	*pp = 0;
+ 
+ 	/* was it an error? */
+-	if (!strcmp(p, "ERR ")) {
++	if (strncmp(p, "ERR ", 4) == 0) {
+ 		serial_write_line(intf, "\r\r\r\r");
+ 		sleep(1);
+ 		serial_flush(intf);
+-- 
+2.39.5
+

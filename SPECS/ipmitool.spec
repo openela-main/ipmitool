@@ -4,7 +4,7 @@
 Name:         ipmitool
 Summary:      Utility for IPMI control
 Version:      1.8.19
-Release:      9%{?dist}
+Release:      10%{?dist}
 License:      BSD-3-Clause-No-Nuclear-Warranty
 URL:          http://ipmitool.sourceforge.net/
 Source0:      https://github.com/%{name}/%{name}/archive/%{gitname}_%{gitversion}/%{name}-%{version}.tar.gz
@@ -25,6 +25,16 @@ Patch7:       0007-check-input.patch
 # https://github.com/ipmitool/ipmitool/issues/199
 # https://github.com/ipmitool/ipmitool/pull/214 - approved but not merged
 Patch14:      0014-lanplus-cipher-retry.patch
+# https://codeberg.org/IPMITool/ipmitool/commit/137aeb64cbb493d61d6945cac156aba5f0510780
+# taken from Debian: https://sources.debian.org/patches/ipmitool/1.8.19-10/0801-fix-lan-print-fails-on-unsupported-parameters.patch/
+Patch25:      0025-fix-lan-print-fails-on-unsupported-parameters.patch
+# partial revert of 6e037d6bfb
+# includes
+# https://codeberg.org/IPMITool/ipmitool/commit/202f7427e0a4d1f319fc4b914676cc2f08da6c6c
+# https://codeberg.org/IPMITool/ipmitool/commit/b67f400825e55bd82f609f40c9c612b4c9961e3e
+# and a fix for https://bugzilla.redhat.com/show_bug.cgi?id=2303185
+# and other downstream fixes
+Patch26:      0026-Partially-revert-6e037d6bfb-to-fix-regressions.patch
 
 # Debian patches, never applied upstream
 # https://bugs.launchpad.net/ubuntu/+source/ipmitool/+bug/633054
@@ -192,6 +202,11 @@ install -Dm 755 contrib/bmc-snmp-proxy         %{buildroot}%{_libexecdir}/bmc-sn
 %{_libexecdir}/bmc-snmp-proxy
 
 %changelog
+* Thu Dec  4 2025 Pavel Cahyna <pcahyna@redhat.com> - 1.8.19-10
+- Apply Debian/upstream patch: 137aeb64, fixes ipmitool lan print
+- Add patch that partially reverts 6e037d6bfb to fix regression in 1.8.19
+  Among others fixes ipmievd startup (fedora#2303185)
+
 * Tue Oct 29 2024 Troy Dawson <tdawson@redhat.com> - 1.8.19-9
 - Bump release for October 2024 mass rebuild:
   Resolves: RHEL-64018
